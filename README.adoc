@@ -1,0 +1,174 @@
+// SPDX-FileCopyrightText: 2025 Philippe Proulx <eeppeliteloop@gmail.com>
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+// Show ToC at a specific location for a GitHub rendering
+ifdef::env-github[]
+:toc: macro
+endif::env-github[]
+
+ifndef::env-github[]
+:toc: left
+endif::env-github[]
+
+// This is to mimic what GitHub does so that anchors work in an offline
+// rendering too.
+:idprefix:
+:idseparator: -
+
+// Other attributes
+:py3: Python{nbsp}3
+
+= lttngmouse 🐭
+Philippe Proulx
+
+[.normal]
+image:https://img.shields.io/pypi/v/lttngmouse.svg?label=Latest%20version[link="https://pypi.python.org/pypi/lttngmouse"]
+
+[.lead]
+_**lttngmouse**_ is a Python package and CLI tool to retrieve
+which Linux distributions offer which LTTng packages.
+
+[IMPORTANT]
+====
+lttngmouse is prone to bugs and could fail at any time.
+
+Although lttngmouse retrieves most of its data from
+the stable https://repology.org/[Repology]
+API, it still needs to rely on HTML parsing
+for some missing distributions. Therefore lttngmouse is at the mercy
+of the exact structure of these HTML pages.
+
+Moreover, some servers lttngmouse connects to don't like concurrent
+connections or even sequential HTTP requests without a delay.
+
+Please https://github.com/lttng/lttngmouse/issues/new[create an issue]
+if lttngmouse stops working for you.
+====
+
+ifdef::env-github[]
+// ToC location for a GitHub rendering
+toc::[]
+endif::env-github[]
+
+== Quick start
+
+Run with https://github.com/pypa/pipx[pipx] (it will take a few seconds):
+
+----
+$ pipx run lttngmouse
+----
+{empty}
+----
+┌──────────────┬───────────────────┬───────────────────────┬─────────────────┬─────────────────┐
+│ Dist. name   │ Dist. version no. │ Dist. version name    │ Package name    │ Package version │
+├──────────────┼───────────────────┼───────────────────────┼─────────────────┼─────────────────┤
+│ Ubuntu       │ 14.04             │ Trusty Tahr           │ ltt-control     │ 2.4.0           │
+│ Ubuntu       │ 14.04             │ Trusty Tahr           │ ust             │ 2.4.0           │
+│ Ubuntu       │ 14.04             │ Trusty Tahr           │ lttng-modules   │ 2.4.0           │
+- - - - - -✂️- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+│ Ubuntu       │ 24.10             │ Oracular Oriole       │ ltt-control     │ 2.13.13         │
+│ Ubuntu       │ 24.10             │ Oracular Oriole       │ ust             │ 2.13.7          │
+│ Ubuntu       │ 24.10             │ Oracular Oriole       │ lttng-modules   │ 2.13.14         │
+│ Ubuntu       │ 25.04             │ Plucky Puffin         │ ltt-control     │ 2.13.14         │
+│ Ubuntu       │ 25.04             │ Plucky Puffin         │ ust             │ 2.13.8          │
+│ Ubuntu       │ 25.04             │ Plucky Puffin         │ lttng-modules   │ 2.13.17         │
+│ Ubuntu       │                   │ LTTng Stable 2.10 PPA │ ltt-control     │ 2.10.8          │
+│ Ubuntu       │                   │ LTTng Stable 2.10 PPA │ ust             │ 2.10.5          │
+│ Ubuntu       │                   │ LTTng Stable 2.10 PPA │ lttng-modules   │ 2.10.15         │
+│ Ubuntu       │                   │ LTTng Stable 2.11 PPA │ ltt-control     │ 2.11.2          │
+│ Ubuntu       │                   │ LTTng Stable 2.11 PPA │ ust             │ 2.11.1          │
+│ Ubuntu       │                   │ LTTng Stable 2.11 PPA │ lttng-modules   │ 2.11.7          │
+- - - - - -✂️- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+│ Debian       │ 11                │ bullseye              │ ltt-control     │ 2.12.3          │
+│ Debian       │ 11                │ bullseye              │ ust             │ 2.12.1          │
+│ Debian       │ 11                │ bullseye              │ lttng-modules   │ 2.12.5          │
+│ Debian       │ 12                │ bookworm              │ ltt-control     │ 2.13.9          │
+│ Debian       │ 12                │ bookworm              │ ust             │ 2.13.5          │
+│ Debian       │ 12                │ bookworm              │ lttng-modules   │ 2.13.9          │
+│ Debian       │ 13                │ trixie                │ ltt-control     │ 2.13.14         │
+│ Debian       │ 13                │ trixie                │ ust             │ 2.13.8          │
+│ Debian       │ 13                │ trixie                │ lttng-modules   │ 2.13.17         │
+│ Debian       │                   │ sid                   │ ltt-control     │ 2.13.15         │
+│ Debian       │                   │ sid                   │ ust             │ 2.13.9          │
+│ Debian       │                   │ sid                   │ lttng-modules   │ 2.13.18         │
+│ Fedora       │ 26                │                       │ lttng-tools     │ 2.9.4           │
+│ Fedora       │ 26                │                       │ lttng-ust       │ 2.9.0           │
+- - - - - -✂️- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+│ Fedora       │ 41                │                       │ lttng-tools     │ 2.13.13         │
+│ Fedora       │ 41                │                       │ lttng-ust       │ 2.13.8          │
+│ Fedora       │ 42                │                       │ lttng-tools     │ 2.13.14         │
+│ Fedora       │ 42                │                       │ lttng-ust       │ 2.13.8          │
+│ Fedora       │                   │ Rawhide               │ lttng-tools     │ 2.13.15         │
+│ Fedora       │                   │ Rawhide               │ lttng-ust       │ 2.13.9          │
+│ openSUSE     │ 15.0              │ Leap                  │ lttng-tools     │ 2.10.2          │
+│ openSUSE     │ 15.0              │ Leap                  │ lttng-ust       │ 2.10.1          │
+│ openSUSE     │ 15.0              │ Leap                  │ lttng-modules   │ 2.10.0          │
+│ openSUSE     │ 15.1              │ Leap                  │ lttng-tools     │ 2.10.2          │
+│ openSUSE     │ 15.1              │ Leap                  │ lttng-ust       │ 2.10.1          │
+│ openSUSE     │ 15.1              │ Leap                  │ lttng-modules   │ 2.10.0          │
+- - - - - -✂️- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+│ openSUSE     │ 42.3              │ Leap                  │ lttng-tools     │ 2.7.1           │
+│ openSUSE     │ 42.3              │ Leap                  │ lttng-ust       │ 2.7.1           │
+│ openSUSE     │ 42.3              │ Leap                  │ lttng-modules   │ 2.7.1           │
+│ openSUSE     │                   │ Tumbleweed            │ lttng-tools     │ 2.13.11         │
+│ openSUSE     │                   │ Tumbleweed            │ lttng-ust       │ 2.13.6          │
+│ Arch Linux   │                   │                       │ lttng-ust       │ 2.13.8          │
+│ Alpine Linux │ 3.8               │                       │ lttng-ust-dev   │ 2.10.1          │
+│ Alpine Linux │ 3.9               │                       │ lttng-ust-dev   │ 2.10.1          │
+- - - - - -✂️- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+│ Alpine Linux │ 3.21              │                       │ lttng-tools     │ 2.13.14         │
+│ Alpine Linux │ 3.21              │                       │ lttng-ust-tools │ 2.13.8          │
+│ Alpine Linux │                   │ Edge                  │ lttng-tools     │ 2.13.15         │
+│ Alpine Linux │                   │ Edge                  │ lttng-ust-tools │ 2.13.9          │
+│ Buildroot    │ 2019.02           │                       │ lttng-tools     │ 2.10.5          │
+│ Buildroot    │ 2019.02           │                       │ lttng-libust    │ 2.10.1          │
+│ Buildroot    │ 2019.02           │                       │ lttng-modules   │ 2.10.6          │
+│ Buildroot    │ 2019.05           │                       │ lttng-tools     │ 2.10.5          │
+│ Buildroot    │ 2019.05           │                       │ lttng-libust    │ 2.10.1          │
+│ Buildroot    │ 2019.05           │                       │ lttng-modules   │ 2.10.6          │
+- - - - - -✂️- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+│ Buildroot    │ 2024.11           │                       │ lttng-tools     │ 2.13.8          │
+│ Buildroot    │ 2024.11           │                       │ lttng-libust    │ 2.13.1          │
+│ Buildroot    │ 2024.11           │                       │ lttng-modules   │ 2.13.10         │
+│ Buildroot    │ 2025.02           │                       │ lttng-tools     │ 2.13.8          │
+│ Buildroot    │ 2025.02           │                       │ lttng-libust    │ 2.13.1          │
+│ Buildroot    │ 2025.02           │                       │ lttng-modules   │ 2.13.10         │
+│ Yocto        │ 1.4               │ Dylan                 │ lttng-tools     │ 2.1.0           │
+│ Yocto        │ 1.4               │ Dylan                 │ lttng-ust       │ 2.1.1           │
+│ Yocto        │ 1.4               │ Dylan                 │ lttng-modules   │ 2.1.1           │
+- - - - - -✂️- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+│ Yocto        │ 5.0               │ Scarthgap             │ lttng-tools     │ 2.13.13         │
+│ Yocto        │ 5.0               │ Scarthgap             │ lttng-ust       │ 2.13.8          │
+│ Yocto        │ 5.0               │ Scarthgap             │ lttng-modules   │ 2.13.12         │
+│ Yocto        │ 5.1               │ Styhead               │ lttng-tools     │ 2.13.14         │
+│ Yocto        │ 5.1               │ Styhead               │ lttng-ust       │ 2.13.8          │
+│ Yocto        │ 5.1               │ Styhead               │ lttng-modules   │ 2.13.14         │
+│ Yocto        │ 5.2               │ Walnascar             │ lttng-tools     │ 2.13.14         │
+│ Yocto        │ 5.2               │ Walnascar             │ lttng-ust       │ 2.13.8          │
+│ Yocto        │ 5.2               │ Walnascar             │ lttng-modules   │ 2.13.17         │
+└──────────────┴───────────────────┴───────────────────────┴─────────────────┴─────────────────┘
+----
+
+== Python package
+
+To use this package:
+
+. Import the package:
++
+[source,python]
+----
+import lttngmouse
+----
+
+. Call its asynchronous `distros()` function, for example:
++
+[source,python]
+----
+distros = asyncio.run(lttngmouse.distros())
+----
++
+`distros()` return an `lttngmouse.Distros` object which has one property
+per supported Linux distribution.
++
+See the `lttngmouse.pub` module to see the public classes and their
+available properties.
