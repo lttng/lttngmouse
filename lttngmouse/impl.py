@@ -262,7 +262,7 @@ class _DistrosBuilder:
 
             if m:
                 ver = f'{m.group(1)}.{m.group(2)}'
-                return ver, name_map[ver]
+                return ver, name_map[ver] if ver in name_map else ""
 
         name_map = await self._ubuntu_name_map()
         return self._distro_from_repology_repos('Ubuntu', repology_repos, repo_distro_version)
