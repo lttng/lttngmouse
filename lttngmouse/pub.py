@@ -19,108 +19,36 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from abc import ABC, abstractmethod
+from typing import Protocol
 import packaging.version
 
 
-class Pkg(ABC):
-    @property
-    @abstractmethod
-    def name(self) -> str:
-        ...
-
-    @property
-    @abstractmethod
-    def version(self) -> packaging.version.Version:
-        ...
+class Pkg(Protocol):
+    name: str
+    version: packaging.version.Version
 
 
-class DistroVersion(ABC):
-    @property
-    @abstractmethod
-    def number(self) -> packaging.version.Version | None:
-        ...
-
-    @property
-    @abstractmethod
-    def number_str(self) -> str | None:
-        ...
-
-    @property
-    @abstractmethod
-    def name(self) -> str | None:
-        ...
-
-    @property
-    @abstractmethod
-    def tools_pkg(self) -> Pkg | None:
-        ...
-
-    @property
-    @abstractmethod
-    def ust_pkg(self) -> Pkg | None:
-        ...
-
-    @property
-    @abstractmethod
-    def modules_pkg(self) -> Pkg | None:
-        ...
+class DistroVersion(Protocol):
+    number: packaging.version.Version | None
+    number_str: str | None
+    name: str | None
+    tools_pkg: Pkg | None
+    ust_pkg: Pkg | None
+    modules_pkg: Pkg | None
 
 
-class Distro(ABC):
-    @property
-    @abstractmethod
-    def name(self) -> str:
-        ...
-
-    @property
-    @abstractmethod
-    def versions(self) -> list[DistroVersion]:
-        ...
+class Distro(Protocol):
+    name: str
+    versions: list[DistroVersion]
 
 
-class Distros(ABC):
-    @property
-    @abstractmethod
-    def ubuntu(self) -> Distro:
-        ...
-
-    @property
-    @abstractmethod
-    def ubuntu_ppa(self) -> Distro:
-        ...
-
-    @property
-    @abstractmethod
-    def debian(self) -> Distro:
-        ...
-
-    @property
-    @abstractmethod
-    def fedora(self) -> Distro:
-        ...
-
-    @property
-    @abstractmethod
-    def opensuse(self) -> Distro:
-        ...
-
-    @property
-    @abstractmethod
-    def arch(self) -> Distro:
-        ...
-
-    @property
-    @abstractmethod
-    def alpine(self) -> Distro:
-        ...
-
-    @property
-    @abstractmethod
-    def buildroot(self) -> Distro:
-        ...
-
-    @property
-    @abstractmethod
-    def yocto(self) -> Distro:
-        ...
+class Distros(Protocol):
+    ubuntu: Distro
+    ubuntu_ppa: Distro
+    debian: Distro
+    fedora: Distro
+    opensuse: Distro
+    arch: Distro
+    alpine: Distro
+    buildroot: Distro
+    yocto: Distro

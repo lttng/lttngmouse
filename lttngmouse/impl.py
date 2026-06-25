@@ -26,139 +26,54 @@ import aiohttp
 import asyncio
 import logging
 import datetime
+import dataclasses
 import lttngmouse.pub
 import packaging.version
 from typing import Any, Callable
 
 
-class _Pkg(lttngmouse.pub.Pkg):
-    def __init__(self, name: str, version: packaging.version.Version):
-        self._name = name
-        self._version = version
-
-    @property
-    def name(self):
-        return self._name
-
-    @property
-    def version(self):
-        return self._version
+@dataclasses.dataclass
+class _Pkg:
+    name: str
+    version: packaging.version.Version
 
 
-class _DistroVersion(lttngmouse.pub.DistroVersion):
-    def __init__(self, number: packaging.version.Version | None, number_str: str | None,
-                 name: str | None):
-        self._number = number
-        self._number_str = number_str
-        self._name = name
-        self._tools_pkg = None
-        self._ust_pkg = None
-        self._modules_pkg = None
-
-    @property
-    def number(self):
-        return self._number
-
-    @property
-    def number_str(self):
-        return self._number_str
-
-    @property
-    def name(self):
-        return self._name
-
-    @property
-    def tools_pkg(self):
-        return self._tools_pkg
+@dataclasses.dataclass
+class _DistroVersion:
+    number: packaging.version.Version | None
+    number_str: str | None
+    name: str | None
+    tools_pkg: lttngmouse.pub.Pkg | None = None
+    ust_pkg: lttngmouse.pub.Pkg | None = None
+    modules_pkg: lttngmouse.pub.Pkg | None = None
 
     def _set_tools_pkg(self, pkg: lttngmouse.pub.Pkg):
-        self._tools_pkg = pkg
-
-    @property
-    def ust_pkg(self):
-        return self._ust_pkg
+        self.tools_pkg = pkg
 
     def _set_ust_pkg(self, pkg: lttngmouse.pub.Pkg):
-        self._ust_pkg = pkg
-
-    @property
-    def modules_pkg(self):
-        return self._modules_pkg
+        self.ust_pkg = pkg
 
     def _set_modules_pkg(self, pkg: lttngmouse.pub.Pkg):
-        self._modules_pkg = pkg
+        self.modules_pkg = pkg
 
 
-class _Distro(lttngmouse.pub.Distro):
-    def __init__(self, name: str, versions: list[lttngmouse.pub.DistroVersion]):
-        self._name = name
-        self._versions = versions
-
-    @property
-    def name(self):
-        return self._name
-
-    @property
-    def versions(self):
-        return self._versions
+@dataclasses.dataclass
+class _Distro:
+    name: str
+    versions: list[lttngmouse.pub.DistroVersion]
 
 
-class _Distros(lttngmouse.pub.Distros):
-    def __init__(self,
-                 ubuntu: lttngmouse.pub.Distro,
-                 ubuntu_ppa: lttngmouse.pub.Distro,
-                 debian: lttngmouse.pub.Distro,
-                 fedora: lttngmouse.pub.Distro,
-                 opensuse: lttngmouse.pub.Distro,
-                 arch: lttngmouse.pub.Distro,
-                 alpine: lttngmouse.pub.Distro,
-                 buildroot: lttngmouse.pub.Distro,
-                 yocto: lttngmouse.pub.Distro):
-        self._ubuntu = ubuntu
-        self._ubuntu_ppa = ubuntu_ppa
-        self._debian = debian
-        self._fedora = fedora
-        self._opensuse = opensuse
-        self._arch = arch
-        self._alpine = alpine
-        self._buildroot = buildroot
-        self._yocto = yocto
-
-    @property
-    def ubuntu(self):
-        return self._ubuntu
-
-    @property
-    def ubuntu_ppa(self):
-        return self._ubuntu_ppa
-
-    @property
-    def debian(self):
-        return self._debian
-
-    @property
-    def fedora(self):
-        return self._fedora
-
-    @property
-    def opensuse(self):
-        return self._opensuse
-
-    @property
-    def arch(self):
-        return self._arch
-
-    @property
-    def alpine(self):
-        return self._alpine
-
-    @property
-    def buildroot(self):
-        return self._buildroot
-
-    @property
-    def yocto(self):
-        return self._yocto
+@dataclasses.dataclass
+class _Distros:
+    ubuntu: lttngmouse.pub.Distro
+    ubuntu_ppa: lttngmouse.pub.Distro
+    debian: lttngmouse.pub.Distro
+    fedora: lttngmouse.pub.Distro
+    opensuse: lttngmouse.pub.Distro
+    arch: lttngmouse.pub.Distro
+    alpine: lttngmouse.pub.Distro
+    buildroot: lttngmouse.pub.Distro
+    yocto: lttngmouse.pub.Distro
 
 
 class _DistrosBuilder:
