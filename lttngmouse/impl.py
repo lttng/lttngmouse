@@ -164,6 +164,8 @@ class _Distros(lttngmouse.pub.Distros):
 
 
 class _DistrosBuilder:
+    _yocto_min_version = packaging.version.parse('3.1')
+
     def __init__(self):
         self._logger = logging.getLogger('lttngmouse')
         self._req_count = 0
@@ -244,15 +246,17 @@ class _DistrosBuilder:
 
     async def _ubuntu_name_map(self):
         self._logger.info('Retrieving Ubuntu release names')
-
-        async with aiohttp.ClientSession() as session:
-            soup, _ = await self._soup_from_url(session, 'https://releases.ubuntu.com/releases/')
-
         name_map = {}
 
-        for m in re.findall(r'Ubuntu (\d+\.\d+)(?:\.\d+)?.*?\((.+?)\)',
-                            soup.select('.p-table-wrapper pre')[0].get_text(strip=True)):
-            name_map[m[0]] = m[1]
+        async with aiohttp.ClientSession() as session:
+            text, _ = await self._text_from_url(session, 'https://changelogs.ubuntu.com/meta-release')
+
+            for stanza in re.split(r'\n\s*\n', text):
+                ver_m = re.search(r'^Version:\s*(\d+\.\d+)', stanza, re.M)
+                name_m = re.search(r'^Name:\s*(.+?)\s*$', stanza, re.M)
+
+                if ver_m is not None and name_m is not None:
+                    name_map.setdefault(ver_m.group(1), name_m.group(1))
 
         return name_map
 
@@ -262,7 +266,13 @@ class _DistrosBuilder:
 
             if m:
                 ver = f'{m.group(1)}.{m.group(2)}'
-                return ver, name_map[ver] if ver in name_map else ""
+                name = name_map.get(ver)
+
+                if name is None:
+                    self._logger.info(f'Unknown Ubuntu release `{ver}`; skipping')
+                    return
+
+                return ver, name
 
         name_map = await self._ubuntu_name_map()
         return self._distro_from_repology_repos('Ubuntu', repology_repos, repo_distro_version)
@@ -376,9 +386,9 @@ class _DistrosBuilder:
     async def _pkg_from_br_pkg_mk(self, session: aiohttp.ClientSession, br_version: str, name: str):
         self._logger.info(f'Retrieving package `{name}` for Buildroot {br_version}')
         text, status = await self._text_from_url(session,
-                                                 f'https://git.buildroot.net/buildroot/plain/package/{name}/{name}.mk?h={br_version}.x')
+                                                 f'https://gitlab.com/buildroot.org/buildroot/-/raw/{br_version}/package/{name}/{name}.mk')
 
-        if status != 200 or 'Invalid branch' in text:
+        if status != 200:
             self._logger.info(f'Invalid Buildroot version {br_version}')
             return
 
@@ -439,26 +449,42 @@ class _DistrosBuilder:
         return _Distro('Buildroot', self._sorted_distro_versions(distro_versions))
 
     @staticmethod
-    def _yocto_name_map_from_table(soup: bs4.BeautifulSoup, selector: str):
-        tag = soup.select_one(selector)
-        assert tag is not None
+    def _yocto_name_map_from_wiki(soup: bs4.BeautifulSoup):
         name_map = {}
+        tables = soup.select('table')
 
-        for tr_el in tag.select('table tr'):
+        for tr_el in (tables[0].select('tr')[1:] if tables else []):
             td_els = tr_el.select('td')
 
-            if len(td_els) == 0:
+            if len(td_els) < 2:
                 continue
 
-            name_map[td_els[0].get_text(strip=True)] = td_els[1].get_text(strip=True)
+            link_el = td_els[0].select_one('a')
+            name = (link_el.get_text(strip=True) if link_el is not None else td_els[0].get_text(strip=True))
+            name = re.split(r'\s*\(', name)[0].strip()
+            number = td_els[1].get_text(strip=True)
+
+            if name and re.fullmatch(r'\d+\.\d+', number):
+                name_map.setdefault(name, number)
+
+        for tr_el in (tables[1].select('tr')[1:] if len(tables) > 1 else []):
+            td_els = tr_el.select('td')
+
+            if len(td_els) < 2:
+                continue
+
+            m = re.search(r'(\d+\.\d+)', td_els[0].get_text())
+            name = td_els[1].get_text(strip=True)
+
+            if m is not None and name:
+                name_map.setdefault(name, m.group(1))
 
         return name_map
 
     async def _yocto_name_map(self, session: aiohttp.ClientSession):
         self._logger.info('Retrieving Yocto release names')
-        soup, _ = await self._soup_from_url(session, 'https://www.yoctoproject.org/development/releases/')
-        return (self._yocto_name_map_from_table(soup, '#current') |
-                self._yocto_name_map_from_table(soup, '#previous'))
+        soup, _ = await self._soup_from_url(session, 'https://wiki.yoctoproject.org/wiki/Releases')
+        return self._yocto_name_map_from_wiki(soup)
 
     async def _distro_version_from_yocto_gw(self, session: aiohttp.ClientSession, ver_name: str,
                                             ver_number: str) -> lttngmouse.pub.DistroVersion | None:
@@ -501,6 +527,13 @@ class _DistrosBuilder:
             distro_versions = []
 
             for ver_name, ver_number in (await self._yocto_name_map(session)).items():
+                # The wiki lists every release back to 0.9, but releases
+                # older than this predate the LTTng OpenEmbedded recipes,
+                # so skip them instead of making pointless requests.
+                if packaging.version.parse(ver_number) < self._yocto_min_version:
+                    self._logger.debug(f'Skipping old Yocto {ver_number} ({ver_name})')
+                    continue
+
                 await asyncio.sleep(.25)
                 distro_version = await self._distro_version_from_yocto_gw(session, ver_name,
                                                                           ver_number)
