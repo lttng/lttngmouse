@@ -21,7 +21,6 @@
 
 import re
 import bs4
-import time
 import typing
 import aiohttp
 import asyncio
@@ -29,7 +28,6 @@ import logging
 import datetime
 import lttngmouse.pub
 import packaging.version
-import concurrent.futures
 from typing import Any, Callable
 
 
@@ -279,8 +277,12 @@ class _DistrosBuilder:
 
     @staticmethod
     def _pkg_from_ppa_page_td_el(name: str, td_elem: bs4.Tag):
-        m = re.match(r'\d+\.\d+\.\d+', td_elem.get_text(strip=True))
-        assert m is not None
+        text = td_elem.get_text(strip=True)
+        m = re.match(r'\d+\.\d+\.\d+', text)
+
+        if m is None:
+            raise RuntimeError(f'Cannot parse package version from PPA page cell `{text}`')
+
         return _Pkg(name, packaging.version.parse(m.group(0)))
 
     async def _distro_version_from_ubuntu_ppa_page(self, session: aiohttp.ClientSession,
@@ -412,9 +414,8 @@ class _DistrosBuilder:
             return
 
         distro_version = _DistroVersion(packaging.version.parse(br_version), br_version, None)
-
-        if tools_pkg is not None:
-            distro_version._set_tools_pkg(tools_pkg)
+        assert tools_pkg is not None
+        distro_version._set_tools_pkg(tools_pkg)
 
         if ust_pkg is not None:
             distro_version._set_ust_pkg(ust_pkg)
@@ -430,7 +431,6 @@ class _DistrosBuilder:
         cur_month = now.month
         yr = 2019
         month = 2
-        distro_versions = []
         br_versions = []
 
         while (yr, month) <= (cur_yr, cur_month):
