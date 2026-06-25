@@ -52,10 +52,10 @@ endif::env-github[]
 
 == Quick start
 
-Run with https://github.com/pypa/pipx[pipx] (it will take a few seconds):
+Run with https://docs.astral.sh/uv/[uvx] (it will take a few seconds):
 
 ----
-$ pipx run lttngmouse
+$ uvx lttngmouse
 ----
 {empty}
 ----

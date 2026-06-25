@@ -19,26 +19,36 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-[tool.poetry]
+[project]
 name = 'lttngmouse'
 version = '0.1.0'
 description = 'LTTng distribution package dynamic data'
 license = 'MIT'
-authors = ['Philippe Proulx <eeppeliteloop@gmail.com>']
-repository = 'https://github.com/lttng/lttngmouse/'
+authors = [
+    {name = 'Philippe Proulx', email = 'eeppeliteloop@gmail.com'},
+]
 keywords = [
     'lttng',
     'distribution',
     'package',
 ]
-packages = [{include = 'lttngmouse'}]
+requires-python = '>=3.10'
+dependencies = [
+    'beautifulsoup4>=4.13,<5',
+    'aiohttp>=3.11,<4',
+    'packaging>=24.0,<25',
+    'terminaltables3>=4.0,<5',
+]
 
-[tool.poetry.scripts]
+[project.urls]
+repository = 'https://github.com/lttng/lttngmouse/'
+
+[project.scripts]
 lttngmouse = 'lttngmouse.cli:_cli'
 
-[tool.poetry.dependencies]
-python = '^3.9'
-beautifulsoup4 = '^4.13'
-aiohttp = '^3.11'
-packaging = '^24.0'
-terminaltables3 = '^4.0'
+[build-system]
+requires = ['hatchling']
+build-backend = 'hatchling.build'
+
+[tool.hatch.build.targets.wheel]
+packages = ['lttngmouse']
