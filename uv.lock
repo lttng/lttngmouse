@@ -416,7 +416,7 @@ dependencies = [
     { name = "beautifulsoup4" },
     { name = "dulwich" },
     { name = "packaging" },
-    { name = "terminaltables3" },
+    { name = "rich" },
     { name = "typer" },
 ]
 
@@ -426,7 +426,7 @@ requires-dist = [
     { name = "beautifulsoup4", specifier = ">=4.13,<5" },
     { name = "dulwich", specifier = ">=1.2,<2" },
     { name = "packaging", specifier = ">=24.0,<25" },
-    { name = "terminaltables3", specifier = ">=4.0,<5" },
+    { name = "rich", specifier = ">=15,<16" },
     { name = "typer", specifier = ">=0.27,<1" },
 ]
 
@@ -764,15 +764,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/47/2c/0a5f6f8ee0d5589e48c7640213ed5175d52cf540a06725b628cc1a45d6ce/soupsieve-2.8.4.tar.gz", hash = "sha256:e121fd02e975c695e4e9e8774a5ee35d74714b59307868dcc5319ad2d9e3328e", size = 121110, upload-time = "2026-05-24T13:55:57.154Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/5e/f5/0c41cb68dcae6b7de4fac4188a3a9589e21fb31df21ea3a2e888db95e6c9/soupsieve-2.8.4-py3-none-any.whl", hash = "sha256:e7e6b0769c8f51ed59acab6e994b00621096cfb1c640a7509295987388fbaf65", size = 37304, upload-time = "2026-05-24T13:55:55.406Z" },
-]
-
-[[package]]
-name = "terminaltables3"
-version = "4.0.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/55/9b/9abd7feb0cf552061cfa452c22773f3158cdad877ad5623f13edfa07116f/terminaltables3-4.0.0.tar.gz", hash = "sha256:4e3eefe209aa89005a0a34d1525739424569729ee29b5e64a8dd51c5ebdab77f", size = 12777, upload-time = "2024-07-21T17:07:26.223Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/ea/66/6053d908e5789877ee702c102935634961a731e3db7d1caa2f1201a99598/terminaltables3-4.0.0-py3-none-any.whl", hash = "sha256:93b4c722f35400a7869cd630e2bbab616b129d1c47c628765c7f47baab2ca270", size = 15806, upload-time = "2024-07-21T17:07:24.85Z" },
 ]
 
 [[package]]

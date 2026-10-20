@@ -37,7 +37,7 @@ dependencies = [
     'beautifulsoup4>=4.13,<5',
     'aiohttp>=3.11,<4',
     'packaging>=24.0,<25',
-    'terminaltables3>=4.0,<5',
+    'rich>=15,<16',
     'dulwich>=1.2,<2',
     'typer>=0.27,<1',
 ]
