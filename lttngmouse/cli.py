@@ -19,23 +19,33 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from typing import Any
+from typing import Annotated
 import terminaltables3
 import lttngmouse
-import argparse
 import logging
 import asyncio
+import typer
+import enum
 
 
-def _cfg_logging(args: Any):
+class _LogLevel(str, enum.Enum):
+    NOTSET = 'N'
+    DEBUG = 'D'
+    INFO = 'I'
+    WARNING = 'W'
+    ERROR = 'E'
+    CRITICAL = 'C'
+
+
+def _cfg_logging(log_level: _LogLevel):
     level = {
-        'N': logging.NOTSET,
-        'D': logging.DEBUG,
-        'I': logging.INFO,
-        'W': logging.WARNING,
-        'E': logging.ERROR,
-        'C': logging.CRITICAL,
-    }[args.log_level]
+        _LogLevel.NOTSET: logging.NOTSET,
+        _LogLevel.DEBUG: logging.DEBUG,
+        _LogLevel.INFO: logging.INFO,
+        _LogLevel.WARNING: logging.WARNING,
+        _LogLevel.ERROR: logging.ERROR,
+        _LogLevel.CRITICAL: logging.CRITICAL,
+    }[log_level]
 
     logging.basicConfig(level=level,
                         format='%(asctime)s [%(name)s] %(levelname).1s: %(message)s',
@@ -90,15 +100,18 @@ def _table_from_distros(distros: lttngmouse.Distros):
     return table.table
 
 
-def _cli():
-    parser = argparse.ArgumentParser(description='LTTng distribution package dynamic data')
-    parser.add_argument('-l', '--log-level', default='C', metavar='LEVEL',
-                        choices=['N', 'D', 'I', 'W', 'E', 'C'],
-                        help='Set the logging level to LEVEL')
-    args = parser.parse_args()
-    _cfg_logging(args)
+# Don't show local variables in tracebacks: they're noisy and may
+# contain HTTP response contents.
+_app = typer.Typer(pretty_exceptions_show_locals=False)
+
+
+@_app.command(help='LTTng distribution package dynamic data')
+def _main(log_level: Annotated[_LogLevel,
+                               typer.Option('-l', '--log-level',
+                                            help='Set the logging level.')] = _LogLevel.CRITICAL):
+    _cfg_logging(log_level)
     print(_table_from_distros(asyncio.run(lttngmouse.distros())))
 
 
 if __name__ == '__main__':
-    _cli()
+    _app()

@@ -39,13 +39,14 @@ dependencies = [
     'packaging>=24.0,<25',
     'terminaltables3>=4.0,<5',
     'dulwich>=1.2,<2',
+    'typer>=0.27,<1',
 ]
 
 [project.urls]
 repository = 'https://github.com/lttng/lttngmouse/'
 
 [project.scripts]
-lttngmouse = 'lttngmouse.cli:_cli'
+lttngmouse = 'lttngmouse.cli:_app'
 
 [build-system]
 requires = ['hatchling']
