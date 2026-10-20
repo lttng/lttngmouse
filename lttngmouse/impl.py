@@ -1,4 +1,4 @@
-# Copyright (c) 2021-2025 Philippe Proulx <eeppeliteloop@gmail.com>
+# Copyright (c) 2021-2026 Philippe Proulx <eeppeliteloop@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -26,8 +26,13 @@ import aiohttp
 import asyncio
 import logging
 import datetime
+import tempfile
 import dataclasses
+import dulwich.refs
+import dulwich.repo
+import dulwich.client
 import lttngmouse.pub
+import dulwich.objects
 import packaging.version
 from typing import Any, Callable
 
@@ -401,34 +406,115 @@ class _DistrosBuilder:
         soup, _ = await self._soup_from_url(session, 'https://wiki.yoctoproject.org/wiki/Releases')
         return self._yocto_name_map_from_wiki(soup)
 
-    async def _distro_version_from_yocto_gw(self, session: aiohttp.ClientSession, ver_name: str,
-                                            ver_number: str) -> lttngmouse.pub.DistroVersion | None:
-        self._logger.info(f'Retrieving Yocto GitWeb page for Yocto {ver_number} ({ver_name})')
-        text, status = await self._text_from_url(session,
-                                                 f'https://git.openembedded.org/openembedded-core/tree/meta/recipes-kernel/lttng?h={ver_name.lower()}')
+    def _yocto_recipe_names_from_git_remote(self, url: str, filter_spec: bytes | None,
+                                            branches: list[str]) -> dict[str, list[str]]:
+        self._logger.info(f'Listing branches of `{url}`')
+        client = dulwich.client.HttpGitClient(url, timeout=60)
+        refs = client.get_refs(b'').refs
+        shas = {}
 
-        if status != 200:
+        for branch in branches:
+            sha = refs.get(dulwich.refs.Ref(f'refs/heads/{branch}'.encode()))
+
+            if sha is not None:
+                shas[branch] = sha
+
+        if not shas:
+            return {}
+
+        recipe_names = {}
+
+        # Fetch only the tip commit of each branch into a temporary bare
+        # repository, then read the file names of the LTTng recipe
+        # directory of each one.
+        with tempfile.TemporaryDirectory(prefix='lttngmouse-') as tmp_dir:
+            with dulwich.repo.Repo.init_bare(tmp_dir) as repo:
+                self._logger.info(f'Fetching {len(shas)} branches from `{url}`')
+                client.fetch(b'', repo, determine_wants=lambda refs, depth=None: list(shas.values()),
+                             depth=1, filter_spec=filter_spec)
+
+                for branch, sha in shas.items():
+                    commit = repo[sha]
+                    assert isinstance(commit, dulwich.objects.Commit)
+                    root_tree = repo[commit.tree]
+                    assert isinstance(root_tree, dulwich.objects.Tree)
+
+                    try:
+                        _, tree_sha = root_tree.lookup_path(repo.object_store.__getitem__,
+                                                            b'meta/recipes-kernel/lttng')
+                    except KeyError:
+                        continue
+
+                    tree = repo[tree_sha]
+
+                    if isinstance(tree, dulwich.objects.Tree):
+                        recipe_names[branch] = [entry.path.decode() for entry in tree.iteritems()]
+
+        return recipe_names
+
+    def _yocto_recipe_names(self, branches: list[str]) -> dict[str, list[str]]:
+        # OpenEmbedded-Core Git remotes to get the Yocto LTTng recipes
+        # from, in order of preference, each with the object filter
+        # to request.
+        #
+        # The web interfaces of `git.openembedded.org` and
+        # `git.yoctoproject.org` sit behind a bot challenge, but their
+        # Git protocol doesn't. The official GitHub mirror is
+        # the fallback.
+        #
+        # `git.openembedded.org` doesn't support object filtering,
+        # therefore fetching from it downloads complete trees with their
+        # blobs (about 25 MiB); don't request a filter to avoid a
+        # Dulwich warning.
+        remotes = (
+            ('https://git.openembedded.org/openembedded-core', None),
+            ('https://github.com/openembedded/openembedded-core', b'blob:none'),
+        )
+
+        for index, (url, filter_spec) in enumerate(remotes):
+            try:
+                return self._yocto_recipe_names_from_git_remote(url, filter_spec, branches)
+            except Exception as exc:
+                if index == len(remotes) - 1:
+                    raise
+
+                self._logger.warning(f'Cannot get LTTng recipes from `{url}` ({type(exc).__name__}: {exc}); '
+                                     'trying the next Git remote')
+
+        return {}
+
+    def _distro_version_from_yocto_recipe_names(self, ver_name: str, ver_number: str,
+                                                recipe_names: list[str]) -> lttngmouse.pub.DistroVersion | None:
+        pkgs: dict[str, _Pkg] = {}
+
+        for recipe_name in recipe_names:
+            m = re.fullmatch(r'(lttng-(?:tools|ust|modules))_(\d+\.\d+\.\d+)\.bb', recipe_name)
+
+            if m is None:
+                continue
+
+            pkg = _Pkg(m.group(1), packaging.version.parse(m.group(2)))
+
+            # Keep the latest version if a branch has more than one
+            if pkg.name not in pkgs or pkg.version > pkgs[pkg.name].version:
+                pkgs[pkg.name] = pkg
+
+        tools_pkg = pkgs.get('lttng-tools')
+
+        if tools_pkg is None:
             self._logger.info(f'No LTTng packages for Yocto {ver_number} ({ver_name})')
             return
 
         distro_version = _DistroVersion(packaging.version.parse(ver_number), ver_number, ver_name)
-        m = re.search(r'lttng-tools_(\d+\.\d+\.\d+)\.bb', text)
+        distro_version._set_tools_pkg(tools_pkg)
+        ust_pkg = pkgs.get('lttng-ust')
+        modules_pkg = pkgs.get('lttng-modules')
 
-        if m:
-            distro_version._set_tools_pkg(_Pkg('lttng-tools', packaging.version.parse(m.group(1))))
-        else:
-            self._logger.info(f'No LTTng packages for Yocto {ver_number} ({ver_name})')
-            return
+        if ust_pkg is not None:
+            distro_version._set_ust_pkg(ust_pkg)
 
-        m = re.search(r'lttng-ust_(\d+\.\d+\.\d+)\.bb', text)
-
-        if m:
-            distro_version._set_ust_pkg(_Pkg('lttng-ust', packaging.version.parse(m.group(1))))
-
-        m = re.search(r'lttng-modules_(\d+\.\d+\.\d+)\.bb', text)
-
-        if m:
-            distro_version._set_modules_pkg(_Pkg('lttng-modules', packaging.version.parse(m.group(1))))
+        if modules_pkg is not None:
+            distro_version._set_modules_pkg(modules_pkg)
 
         return distro_version
 
@@ -437,24 +523,33 @@ class _DistrosBuilder:
             'User-Agent': 'lttngmouse/0.1.0 (+https://lttng.org/)',
         }
 
-        async with aiohttp.ClientSession(headers=headers,
-                                         connector=aiohttp.TCPConnector(limit_per_host=2)) as session:
-            distro_versions = []
+        async with aiohttp.ClientSession(headers=headers) as session:
+            name_map = await self._yocto_name_map(session)
 
-            for ver_name, ver_number in (await self._yocto_name_map(session)).items():
-                # The wiki lists every release back to 0.9, but releases
-                # older than this predate the LTTng OpenEmbedded recipes,
-                # so skip them instead of making pointless requests.
-                if packaging.version.parse(ver_number) < self._yocto_min_version:
-                    self._logger.debug(f'Skipping old Yocto {ver_number} ({ver_name})')
-                    continue
+        releases = []
 
-                await asyncio.sleep(.25)
-                distro_version = await self._distro_version_from_yocto_gw(session, ver_name,
-                                                                          ver_number)
+        for ver_name, ver_number in name_map.items():
+            # The wiki lists every release back to 0.9, but releases
+            # older than this predate the LTTng OpenEmbedded recipes, so
+            # skip them instead of fetching their branches.
+            if packaging.version.parse(ver_number) < self._yocto_min_version:
+                self._logger.debug(f'Skipping old Yocto {ver_number} ({ver_name})')
+                continue
 
-                if distro_version is not None:
-                    distro_versions.append(distro_version)
+            releases.append((ver_name, ver_number))
+
+        # Dulwich is synchronous: run it in a thread so that the other
+        # sources keep progressing in the meantime.
+        recipe_names = await asyncio.to_thread(self._yocto_recipe_names,
+                                               [ver_name.lower() for ver_name, _ in releases])
+        distro_versions = []
+
+        for ver_name, ver_number in releases:
+            distro_version = self._distro_version_from_yocto_recipe_names(ver_name, ver_number,
+                                                                          recipe_names.get(ver_name.lower(), []))
+
+            if distro_version is not None:
+                distro_versions.append(distro_version)
 
         return _Distro('Yocto', self._sorted_distro_versions(distro_versions))
 

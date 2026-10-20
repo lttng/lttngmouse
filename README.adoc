@@ -41,6 +41,10 @@ of the exact structure of these HTML pages.
 Moreover, some servers lttngmouse connects to don't like concurrent
 connections or even sequential HTTP requests without a delay.
 
+To get the Yocto data, lttngmouse fetches the latest commit of each
+release branch of OpenEmbedded-Core into a temporary directory (about
+25{nbsp}MiB to download) which it removes afterwards.
+
 Please https://github.com/lttng/lttngmouse/issues/new[create an issue]
 if lttngmouse stops working for you.
 ====
